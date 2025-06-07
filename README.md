@@ -10,3 +10,5 @@ API_URL="https://example.com/api/pages"
 TOKEN="found in API Plugin once activated"
 AUTH="Found in user Security"
 ```
+
+Uses **jq**

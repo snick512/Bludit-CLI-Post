@@ -17,7 +17,7 @@ SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9 ]//g' | t
 
 # Let user write content in Markdown using their default editor
 TMP_FILE=$(mktemp /tmp/markdown_XXXX.md)
-echo "# Write your Markdown content below" > "$TMP_FILE"
+echo "# Replace with your content" > "$TMP_FILE"
 ${EDITOR:-nano} "$TMP_FILE"
 
 # Read the content back from the temp file

@@ -1,6 +1,7 @@
 #!/bin/bash
+set -euo pipefail
 
-# Load configuration
+# Load secure configuration
 CONFIG_FILE=".page_config"
 if [[ ! -f "$CONFIG_FILE" ]]; then
     echo "❌ Missing .page_config file. Please create it with API_URL, TOKEN, and AUTH."
@@ -8,7 +9,9 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 source "$CONFIG_FILE"
 
-# --- Parse arguments ---
+# --- Parse command-line arguments ---
+TITLE=""
+TAGS=""
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --title)
@@ -27,46 +30,48 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Validate required args
-if [[ -z "$TITLE" ]]; then
-    echo "❌ Missing --title"
-    exit 1
-fi
-if [[ -z "$TAGS" ]]; then
-    echo "❌ Missing --tags"
+# --- Validate input ---
+if [[ -z "$TITLE" || -z "$TAGS" ]]; then
+    echo "❌ Error: Both --title and --tags are required."
     exit 1
 fi
 
-# Generate slug from title
+# --- Sanitize title into slug ---
 SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9 ]//g' | tr ' ' '-' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
 
-# Open Markdown editor
-TMP_FILE=$(mktemp /tmp/markdown_XXXX.md)
+# --- Secure temp file for markdown input ---
+TMP_FILE=$(mktemp "/tmp/markdown_XXXXXX.md")
+trap 'shred -u "$TMP_FILE" 2>/dev/null' EXIT
+
 echo "# Write your Markdown content below" > "$TMP_FILE"
 ${EDITOR:-nano} "$TMP_FILE"
 
-# Read content
+# --- Read Markdown content ---
 CONTENT=$(<"$TMP_FILE")
-rm "$TMP_FILE"
 
-# Build JSON
-cat > payload.json <<EOF
-{
-  "token": "$TOKEN",
-  "authentication": "$AUTH",
-  "title": "$TITLE",
-  "content": $(jq -Rs <<< "$CONTENT"),
-  "slug": "$SLUG",
-  "tags": "$TAGS"
-}
-EOF
+# --- Secure JSON construction (no temp payload file) ---
+JSON=$(jq -n \
+    --arg token "$TOKEN" \
+    --arg auth "$AUTH" \
+    --arg title "$TITLE" \
+    --arg content "$CONTENT" \
+    --arg slug "$SLUG" \
+    --arg tags "$TAGS" \
+    '{
+      token: $token,
+      authentication: $auth,
+      title: $title,
+      content: $content,
+      slug: $slug,
+      tags: $tags
+    }')
 
-# Send request
-echo "🚀 Posting to $API_URL ..."
+# --- Send POST request ---
+echo "🚀 Posting securely to $API_URL ..."
 RESPONSE=$(curl -s -X POST "$API_URL" \
     -H "Content-Type: application/json" \
-    -d @payload.json)
+    -d "$JSON")
 
-# Show response
+# --- Show response ---
 echo "📬 Response:"
 echo "$RESPONSE"

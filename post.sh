@@ -43,7 +43,7 @@ SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9 ]//g' | t
 TMP_FILE=$(mktemp "/tmp/markdown_XXXXXX.md")
 trap 'shred -u "$TMP_FILE" 2>/dev/null' EXIT
 
-echo "# Write your Markdown content below" > "$TMP_FILE"
+echo "# Replace with your content" > "$TMP_FILE"
 ${EDITOR:-nano} "$TMP_FILE"
 
 # --- Read Markdown content ---
